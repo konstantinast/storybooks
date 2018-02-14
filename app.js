@@ -1,12 +1,16 @@
 const express = require('express');
+const path = require('path');
 const exphbs  = require('express-handlebars');
 const mongoose = require('mongoose');
 const passport = require('passport');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
+const bodyParser = require('body-parser');
+const methodOverride = require('method-override');
 
-// Load user model
+// Load models
 require('./models/User');
+require('./models/Story');
 
 // Passport Config
 require('./config/passport')(passport);
@@ -14,6 +18,7 @@ require('./config/passport')(passport);
 // Load routes
 const auth = require('./routes/auth');
 const index = require('./routes/index');
+const stories = require('./routes/stories');
 
 // Load Keys
 const keys = require('./config/keys');
@@ -27,9 +32,20 @@ const app = express();
 
 // Handlebars Middleware
 app.engine('handlebars', exphbs({
+    helpers: require('./helpers/hbs'),
     defaultLayout: 'main'
 }));
 app.set('view engine', 'handlebars');
+
+// Body parser Middleware
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+
+// Static folder
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Method override middleware
+app.use(methodOverride('_method'));
 
 app.use(cookieParser())
 app.use(session({
@@ -45,6 +61,13 @@ app.use(passport.session());
 // Set Global vars
 app.use((req, res, next) => {
     res.locals.user = req.user || null;
+    
+    // For template
+    const date = new Date();
+    res.locals.date = {
+        year: date.getUTCFullYear()
+    };
+    
     next();
 });
 
@@ -55,6 +78,7 @@ app.use((req, res, next) => {
 // Use routes
 app.use('/', index);
 app.use('/auth', auth);
+app.use('/stories', stories);
 
 const port = process.env.PORT || 5000;
 
